@@ -1,4 +1,7 @@
-'Path to SAP exe. Here you type path to SAP exe file
+
+Sub SAP()
+
+'Path to SAP exe file
 Shell "C:\Program Files (x86)\SAP\FrontEnd\SAPgui\saplogon.exe", 4
 Set WshShell = CreateObject("WScript.Shell")
 
@@ -13,15 +16,16 @@ Set Connection = Appl.Openconnection("SAP produkcijski sistem", True)
 Set session = Connection.Children(0)
 
 'Insert username and password
+
 session.findById("wnd[0]/usr/txtRSYST-MANDT").text = "400"
-session.findById("wnd[0]/usr/txtRSYST-BNAME").text = "****" 'SAP username
-session.findById("wnd[0]/usr/pwdRSYST-BCODE").text = "****" 'SAP password
+session.findById("wnd[0]/usr/txtRSYST-BNAME").text = "****"
+session.findById("wnd[0]/usr/pwdRSYST-BCODE").text = "****"
 session.findById("wnd[0]/usr/txtRSYST-LANGU").text = "SL"
 
 session.findById("wnd[0]").maximize
 session.findById("wnd[0]").sendVKey 0 'ENTER
 
-'This script you create in SAP
+'Script which we create in SAP
 session.findById("wnd[0]").maximize
 session.findById("wnd[0]/usr/cntlIMAGE_CONTAINER/shellcont/shell/shellcont[0]/shell").doubleClickNode "F00005"
 session.findById("wnd[1]").sendVKey 4
@@ -64,3 +68,358 @@ session.findById("wnd[1]/usr/subSUBSCREEN_STEPLOOP:SAPLSPO5:0150/sub:SAPLSPO5:01
 session.findById("wnd[1]/usr/subSUBSCREEN_STEPLOOP:SAPLSPO5:0150/sub:SAPLSPO5:0150/radSPOPLI-SELFLAG[0,0]").SetFocus
 session.findById("wnd[1]/tbar[0]/btn[0]").press
 session.findById("wnd[1]/tbar[0]/btn[0]").press
+
+End Sub
+
+Sub InsertPivotTable()
+
+'Second part VBA script. Here we create pivoz table and send data to already prepared table
+Workbooks("Delovni list v Basis (1)").Sheets("List1").Activate
+ActiveSheet.Cells.Select
+Selection.Copy
+
+Workbooks("SVTK LJ tekoce 2021 tabela.xls").Sheets("List1").Activate
+ActiveSheet.Range("A1").Select
+ActiveSheet.Paste
+
+Workbooks("Delovni list v Basis (1)").Close SaveChanges:=False
+
+'Prepare table
+
+Sheets("List1").Select
+ActiveWindow.ScrollColumn = 7
+ActiveWindow.ScrollColumn = 6
+ActiveWindow.ScrollColumn = 2
+ActiveWindow.ScrollColumn = 1
+ActiveWindow.SmallScroll Down:=-984
+Range("A1:D1").Select
+Selection.Delete Shift:=xlUp
+Range("E2:AI2").Select
+Selection.Delete Shift:=xlUp
+                
+'Declare Variables
+
+Dim PSheet As Worksheet
+Dim PSheet1 As Worksheet
+Dim DSheet As Worksheet
+Dim PCache As PivotCache
+Dim PTable As PivotTable
+Dim PRange As Range
+Dim LastRow As Long
+Dim LastCol As Long
+
+'Insert a New Blank Worksheet
+
+On Error Resume Next
+Application.DisplayAlerts = False
+Worksheets("Table").Delete
+Sheets.Add Before:=ActiveSheet
+ActiveSheet.Name = "Table"
+Application.DisplayAlerts = True
+Set PSheet = Worksheets("Table")
+Set DSheet = Worksheets("List1")
+
+'Define Data Range
+LastRow = DSheet.Cells(Rows.Count, 1).End(xlUp).Row
+LastCol = DSheet.Cells(1, Columns.Count).End(xlToLeft).Column
+Set PRange = DSheet.Cells(1, 1).Resize(LastRow, LastCol)
+
+'Define Pivot Cache
+Set PCache = ActiveWorkbook.PivotCaches.Create _
+(SourceType:=xlDatabase, SourceData:=PRange). _
+CreatePivotTable(TableDestination:=PSheet.Cells(2, 2), _
+TableName:="Table")
+
+'Insert Blank Pivot Table
+Set PTable = PCache.CreatePivotTable _
+(TableDestination:=PSheet.Cells(1, 1), TableName:="Table")
+
+'Insert Row Fields
+With ActiveSheet.PivotTables("Table").PivotFields("Str.nosilec")
+.Orientation = xlRowField
+.Position = 1
+End With
+
+'Insert Data Field
+
+With ActiveSheet.PivotTables("Table").PivotFields("Izdelavni material")
+.Orientation = xlDataField
+.Function = xlSum
+.NumberFormat = "#,##0"
+.Name = "Vsota izdelavni material"
+End With
+
+With ActiveSheet.PivotTables("Table").PivotFields("IzdelavaStrVzd")
+.Orientation = xlDataField
+.Function = xlSum
+.NumberFormat = "#,##0"
+.Name = "Vsota izdelava storitve"
+End With
+
+
+'Insert Filter
+Set PTable = Worksheets("Table").PivotTables("Table")
+PTable.PivotFields("Str.nosilec").PivotFilters.Add Type:=xlCaptionContains, Value1:="38?0"
+
+'Prepare columns with decimals
+Columns("C:G").Select
+Selection.NumberFormat = "#,##0.00"
+
+'Convert pivot to values
+Columns("B:D").Select
+Selection.Copy
+Selection.PasteSpecial Paste:=xlPasteValues, Operation:=xlNone, SkipBlanks _
+:=False, Transpose:=False
+
+'Separate Values
+
+Columns("B:B").Select
+Application.CutCopyMode = False
+Selection.TextToColumns Destination:=Range("B1"), DataType:=xlFixedWidth, _
+FieldInfo:=Array(Array(0, 1), Array(6, 9), Array(31, 9)), TrailingMinusNumbers:= _
+True
+Range("B2").Select
+Range(Selection, Selection.End(xlDown)).Select
+Selection.Cut
+Range("B3").Select
+ActiveSheet.Paste
+
+'Insert a New Blank Worksheet to sum 3800+3890
+
+On Error Resume Next 'Table to sum 3800+3890
+Sheets.Add(After:=Sheets("Table")).Name = "Table1"
+
+Sheets("Table1").Activate
+Range("C2").Value = "Material"
+Range("D2").Value = "Storitve"
+Range("B3").Value = "3800"
+Range("B4").Value = "3890"
+Range("B5").Value = "Skupaj"
+
+'Send values material and service to Table1 for 3800 and 3890
+Sheets("Table").Activate
+Columns("B:F").Find(What:="3800").Select
+ActiveCell.Offset(rowOffset:=0, columnOffset:=1).Activate
+ActiveCell.Copy Worksheets("Table1").Range("C3")
+
+Sheets("Table").Activate
+Columns("B:F").Find(What:="3800").Select
+ActiveCell.Offset(rowOffset:=0, columnOffset:=2).Activate
+ActiveCell.Copy Worksheets("Table1").Range("D3")
+
+Sheets("Table").Activate
+Columns("B:F").Find(What:="3890").Select
+ActiveCell.Offset(rowOffset:=0, columnOffset:=1).Activate
+ActiveCell.Copy Worksheets("Table1").Range("C4")
+
+Sheets("Table").Activate
+Columns("B:F").Find(What:="3890").Select
+ActiveCell.Offset(rowOffset:=0, columnOffset:=2).Activate
+ActiveCell.Copy Worksheets("Table1").Range("D4")
+
+'Sum material and service in Table1 for 3800 and 3890
+Sheets("Table1").Activate
+Range("C5") = WorksheetFunction.Sum(Range("C3:C4"))
+
+Sheets("Table1").Activate
+Range("D5") = WorksheetFunction.Sum(Range("D3:D4"))
+
+'Insert a New Blank Worksheet to sum Electricity for 38
+
+On Error Resume Next
+Sheets.Add(After:=Sheets("Table1")).Name = "Table2"
+Set PSheet1 = Worksheets("Table2")
+Set DSheet = Worksheets("List1")
+Sheets("Table2").Activate
+
+'Define Pivot Cache for Table2
+Sheets("Table2").Activate
+Set PCache = ActiveWorkbook.PivotCaches.Create _
+(SourceType:=xlDatabase, SourceData:=PRange). _
+CreatePivotTable(TableDestination:=PSheet1.Cells(2, 2), _
+TableName:="Table2")
+
+'Insert Blank Pivot Table2
+Set PTable = PCache.CreatePivotTable _
+(TableDestination:=PSheet1.Cells(1, 1), TableName:="Table2")
+
+'Insert Row Field for filtering Table2
+Sheets("Table2").Activate
+With ActiveSheet.PivotTables("Table2").PivotFields("Str.nosilec")
+.Orientation = xlRowField
+.Position = 1
+End With
+
+'Insert Data Fields for filtering columns Table2
+Sheets("Table2").Activate
+With ActiveSheet.PivotTables("Table2").PivotFields("IzdelavaEnergija")
+.Orientation = xlDataField
+.Function = xlSum
+.NumberFormat = "#,##0"
+.Name = "Elektrika izdelava "
+End With
+
+'Insert Filter for Table2 (38), convert to values and set values to decimals
+Sheets("Table2").Activate
+Set PTable = Worksheets("Table2").PivotTables("Table2")
+PTable.PivotFields("Str.nosilec").PivotFilters.Add Type:=xlCaptionBeginsWith, Value1:="38"
+
+Columns("C:F").Select
+Selection.NumberFormat = "#,####.00"
+
+Columns("B:F").Select
+Selection.Copy
+Selection.PasteSpecial Paste:=xlPasteValues, Operation:=xlNone, SkipBlanks _
+:=False, Transpose:=False
+
+'Send values from Table2 to active month
+Sheets("Table2").Activate
+Columns("B:F").Find(What:="Skupna vsota").Select
+ActiveCell.Offset(rowOffset:=0, columnOffset:=1).Activate 'Electrcity
+ActiveCell.Copy Worksheets("01").Range("J20")
+
+'Send values from Table1 to active month
+
+Sheets("Table1").Activate
+Columns("B:F").Find(What:="Skupaj").Select
+ActiveCell.Offset(rowOffset:=0, columnOffset:=1).Activate 'Material
+ActiveCell.Copy Worksheets("01").Range("H7")
+
+Sheets("Table1").Activate
+Columns("B:F").Find(What:="Skupaj").Select
+ActiveCell.Offset(rowOffset:=0, columnOffset:=2).Activate 'Service
+ActiveCell.Copy Worksheets("01").Range("I7")
+
+'Vlookup function
+
+'Dim ws As Worksheet
+'Set ws = ThisWorkbook.Sheets("01")
+'With ws
+'    .Range("H7").Formula = "=VLOOKUP(A7,Table!$B:$D,2,0)"
+'End With
+
+Set ws = ThisWorkbook.Sheets("01")
+With ws
+    .Range("H9").Formula = "=VLOOKUP(A9,Table!$B:$D,2,0)"
+End With
+
+Set ws = ThisWorkbook.Sheets("01")
+With ws
+    .Range("H10").Formula = "=VLOOKUP(A10,Table!$B:$D,2,0)"
+End With
+
+Set ws = ThisWorkbook.Sheets("01")
+With ws
+    .Range("H11").Formula = "=VLOOKUP(A11,Table!$B:$D,2,0)"
+End With
+
+Set ws = ThisWorkbook.Sheets("01")
+With ws
+    .Range("H12").Formula = "=VLOOKUP(A12,Table!$B:$D,2,0)"
+End With
+
+Set ws = ThisWorkbook.Sheets("01")
+With ws
+    .Range("H13").Formula = "=VLOOKUP(A13,Table!$B:$D,2,0)"
+End With
+
+Set ws = ThisWorkbook.Sheets("01")
+With ws
+    .Range("H15").Formula = "=VLOOKUP(A15,Table!$B:$D,2,0)"
+End With
+
+Set ws = ThisWorkbook.Sheets("01")
+With ws
+    .Range("H16").Formula = "=VLOOKUP(A16,Table!$B:$D,2,0)"
+End With
+
+Set ws = ThisWorkbook.Sheets("01")
+With ws
+    .Range("H17").Formula = "=VLOOKUP(A17,Table!$B:$D,2,0)"
+End With
+
+'Set ws = ThisWorkbook.Sheets("01")
+'With ws
+'    .Range("I7").Formula = "=VLOOKUP(A7,Table!$B:$D,3,0)"
+'End With
+
+Set ws = ThisWorkbook.Sheets("01")
+With ws
+    .Range("I9").Formula = "=VLOOKUP(A9,Table!$B:$D,3,0)"
+End With
+
+Set ws = ThisWorkbook.Sheets("01")
+With ws
+    .Range("I10").Formula = "=VLOOKUP(A10,Table!$B:$D,3,0)"
+End With
+
+Set ws = ThisWorkbook.Sheets("01")
+With ws
+    .Range("I11").Formula = "=VLOOKUP(A11,Table!$B:$D,3,0)"
+End With
+
+Set ws = ThisWorkbook.Sheets("01")
+With ws
+    .Range("I12").Formula = "=VLOOKUP(A12,Table!$B:$D,3,0)"
+End With
+
+Set ws = ThisWorkbook.Sheets("01")
+With ws
+    .Range("I13").Formula = "=VLOOKUP(A13,Table!$B:$D,3,0)"
+End With
+
+Set ws = ThisWorkbook.Sheets("01")
+With ws
+    .Range("I15").Formula = "=VLOOKUP(A15,Table!$B:$D,3,0)"
+End With
+
+Set ws = ThisWorkbook.Sheets("01")
+With ws
+    .Range("I16").Formula = "=VLOOKUP(A16,Table!$B:$D,3,0)"
+End With
+
+Set ws = ThisWorkbook.Sheets("01")
+With ws
+    .Range("I17").Formula = "=VLOOKUP(A17,Table!$B:$D,3,0)"
+End With
+
+'Convert to values  25 has to be changed
+Sheets("01").Activate
+Range("H7:I21").Select
+Selection.Copy
+Range("H7:I21").Select
+Selection.PasteSpecial Paste:=xlPasteValues, Operation:=xlNone, SkipBlanks _
+:=False, Transpose:=False
+
+Sheets("01").Activate
+Cells.Replace What:="#N/A", Replacement:="", LookAt:=xlPart, SearchOrder _
+:=xlByRows
+
+'Convert to correct shape (paste special - format cells)
+
+Sheets("01").Activate
+Range("D7").Copy
+Range("H7:I7").PasteSpecial Paste:=xlPasteFormats
+Application.CutCopyMode = False 'Format cells for first row
+
+Sheets("01").Activate
+Range("J19").Copy
+Range("J20").PasteSpecial Paste:=xlPasteFormats
+Application.CutCopyMode = False 'Format cell for electricity
+
+'Displays alerts turn off
+Application.DisplayAlerts = False
+
+' Delete Tables
+
+Sheets("Table").Delete
+Sheets("Table1").Delete
+Sheets("Table2").Delete
+
+'25 should be replaced
+
+Workbooks("SVTK LJ tekoce 2021 tabela.xls").Sheets("List1").Activate
+ActiveSheet.Cells.Select
+Selection.Delete
+
+End Sub

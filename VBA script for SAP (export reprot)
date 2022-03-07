@@ -1,0 +1,66 @@
+'Path to SAP exe. Here you type path to SAP exe file
+Shell "C:\Program Files (x86)\SAP\FrontEnd\SAPgui\saplogon.exe", 4
+Set WshShell = CreateObject("WScript.Shell")
+
+Do Until WshShell.AppActivate("SAP Logon ")
+    Application.Wait Now + TimeValue("0:00:01")
+Loop
+
+'Choose a connection
+Set SapGui = GetObject("SAPGUI")
+Set Appl = SapGui.GetScriptingEngine
+Set Connection = Appl.Openconnection("SAP produkcijski sistem", True)
+Set session = Connection.Children(0)
+
+'Insert username and password
+session.findById("wnd[0]/usr/txtRSYST-MANDT").text = "400"
+session.findById("wnd[0]/usr/txtRSYST-BNAME").text = "****" 'SAP username
+session.findById("wnd[0]/usr/pwdRSYST-BCODE").text = "****" 'SAP password
+session.findById("wnd[0]/usr/txtRSYST-LANGU").text = "SL"
+
+session.findById("wnd[0]").maximize
+session.findById("wnd[0]").sendVKey 0 'ENTER
+
+'This script you create in SAP
+session.findById("wnd[0]").maximize
+session.findById("wnd[0]/usr/cntlIMAGE_CONTAINER/shellcont/shell/shellcont[0]/shell").doubleClickNode "F00005"
+session.findById("wnd[1]").sendVKey 4
+session.findById("wnd[2]/usr/lbl[37,3]").SetFocus
+session.findById("wnd[2]/usr/lbl[37,3]").caretPosition = 0
+session.findById("wnd[2]/tbar[0]/btn[0]").press
+session.findById("wnd[1]/tbar[0]/btn[0]").press
+session.findById("wnd[0]/shellcont/shell").selectedNode = "000000001002"
+session.findById("wnd[0]/tbar[1]/btn[8]").press
+session.findById("wnd[0]/usr/ctxtPAR_05").text = "001.2021"
+session.findById("wnd[0]/usr/ctxtPAR_05").SetFocus
+session.findById("wnd[0]/usr/ctxtPAR_05").caretPosition = 8
+session.findById("wnd[0]").sendVKey 4
+session.findById("wnd[0]/usr/ctxtPAR_06").text = "001.2021"
+session.findById("wnd[0]/usr/ctxtPAR_06").SetFocus
+session.findById("wnd[0]/usr/ctxtPAR_06").caretPosition = 8
+session.findById("wnd[0]").sendVKey 4
+session.findById("wnd[0]/usr/ctxtPAR_03").text = "0069"
+session.findById("wnd[0]/usr/ctxtPAR_03").SetFocus
+session.findById("wnd[0]/usr/ctxtPAR_03").caretPosition = 4
+session.findById("wnd[0]").sendVKey 4
+session.findById("wnd[1]/usr/lbl[1,8]").SetFocus
+session.findById("wnd[1]/usr/lbl[1,8]").caretPosition = 2
+session.findById("wnd[1]/tbar[0]/btn[0]").press
+session.findById("wnd[0]/usr/ctxtPAR_04").SetFocus
+session.findById("wnd[0]/usr/ctxtPAR_04").caretPosition = 3
+session.findById("wnd[0]").sendVKey 4
+session.findById("wnd[1]/usr/lbl[1,8]").SetFocus
+session.findById("wnd[1]/usr/lbl[1,8]").caretPosition = 3
+session.findById("wnd[1]/tbar[0]/btn[0]").press
+session.findById("wnd[0]/usr/ctxtPAR_01").text = "2-2-11"
+session.findById("wnd[0]/usr/ctxtPAR_01").SetFocus
+session.findById("wnd[0]/usr/ctxtPAR_01").caretPosition = 6
+session.findById("wnd[0]/tbar[1]/btn[8]").press
+session.findById("wnd[1]/usr/btnBUTTON_OK").press
+session.findById("wnd[0]").sendVKey 48
+session.findById("wnd[1]/usr/btnD2000_PUSH_01").press
+session.findById("wnd[1]/tbar[0]/btn[0]").press
+session.findById("wnd[1]/usr/subSUBSCREEN_STEPLOOP:SAPLSPO5:0150/sub:SAPLSPO5:0150/radSPOPLI-SELFLAG[0,0]").Select
+session.findById("wnd[1]/usr/subSUBSCREEN_STEPLOOP:SAPLSPO5:0150/sub:SAPLSPO5:0150/radSPOPLI-SELFLAG[0,0]").SetFocus
+session.findById("wnd[1]/tbar[0]/btn[0]").press
+session.findById("wnd[1]/tbar[0]/btn[0]").press
